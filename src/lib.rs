@@ -1,3 +1,9 @@
+use embedded_graphics_core::{
+    draw_target::DrawTarget,
+    geometry::{OriginDimensions, Size},
+    pixelcolor::Gray8,
+    Pixel,
+};
 use embedded_hal::i2c::{ErrorType, I2c};
 
 // can't use the display-interface crate trait because the UC1611S
@@ -61,5 +67,35 @@ where
     ) -> Result<(), <Bus as ErrorType>::Error> {
         self.bus
             .write(self.base_address + address_offset::WRITE_COMMAND, &[])
+    }
+}
+
+impl<Bus> OriginDimensions for UC1611S<Bus> {
+    fn size(&self) -> Size {
+        Size::new(64, 64)
+    }
+}
+
+impl<Bus> DrawTarget for UC1611S<Bus> {
+    type Color = Gray8;
+    type Error = ();
+
+    fn draw_iter<I>(&mut self, pixels: I) -> Result<(), Self::Error>
+    where
+        I: IntoIterator<Item = Pixel<Self::Color>>,
+    {
+        for Pixel(coord, color) in pixels.into_iter() {
+            // Check if the pixel coordinates are out of bounds (negative or greater than
+            // (63,63)). `DrawTarget` implementation are required to discard any out of bounds
+            // pixels without returning an error or causing a panic.
+            if let Ok((x @ 0..=63, y @ 0..=63)) = coord.try_into() {
+                // Calculate the index in the framebuffer.
+                // let index: u32 = x + y * 64;
+                // self.framebuffer[index as usize] = color.luma();
+                //TODO set column address & write the byte
+            }
+        }
+
+        Ok(())
     }
 }
